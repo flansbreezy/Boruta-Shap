@@ -6,7 +6,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 from sklearn.inspection import permutation_importance
 from scipy.sparse import issparse
-from scipy.stats import binom_test, ks_2samp
+from scipy.stats import binomtest, ks_2samp
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 import random
@@ -527,8 +527,8 @@ class BorutaShap:
 
         """
 
-        padded_history_shadow  = np.full((self.ncols), np.NaN)
-        padded_history_x = np.full((self.ncols), np.NaN)
+        padded_history_shadow  = np.full((self.ncols), np.nan)
+        padded_history_x = np.full((self.ncols), np.nan)
 
         for (index, col) in enumerate(self.columns):
             map_index = self.order[col]
@@ -881,8 +881,10 @@ class BorutaShap:
         Perform a test that the probability of success is p.
         This is an exact, two-sided test of the null hypothesis
         that the probability of success in a Bernoulli experiment is p
+
+        Returns the p value of each of the tests.
         """
-        return [binom_test(x, n=n, p=p, alternative=alternative) for x in array]
+        return [binomtest(k=int(x), n=int(n), p=p, alternative=alternative).pvalue for x in array]
 
 
     @staticmethod
