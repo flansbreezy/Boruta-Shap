@@ -7,7 +7,7 @@ def readme():
 
 setup(
     name="BorutaShapPlus",
-    version="0.1.2",
+    version="0.1.3",
     description="An updated version of the SHAP-based Boruta feature selection algorithm with some new features.",
     long_description=readme(),
     long_description_content_type="text/markdown",
