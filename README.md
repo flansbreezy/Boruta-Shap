@@ -1,6 +1,12 @@
 [![DOI](https://zenodo.org/badge/255354538.svg)](https://zenodo.org/badge/latestdoi/255354538)
 <a href="https://badge.fury.io/py/BorutaShap"><img src="https://badge.fury.io/py/BorutaShap.svg" alt="PyPI version" height="18"></a>
 
+# Boruta-Shap-Plus
+This is a fork of [Boruta-Shap](https://github.com/Ekeany/Boruta-Shap) by Eoghan Keany. The original library was not maintained anymore, and this fork includes the following updates:
+* Updated to use the latest versions of numpy and scipy. The original library had some depreciated imports that threw errors when used with newer versions of those libraries. 
+* Added the ability to do a time-aware train-test split. 
+* Made test set size parameterizable. 
+
 # Boruta-Shap
 BorutaShap is a wrapper feature selection method which combines both the Boruta feature selection algorithm with shapley values. This combination has proven to out perform the original Permutation Importance method in both speed, and the quality of the feature subset produced. Not only does this algorithm provide a better subset of features, but it can also simultaneously provide the most accurate and consistent global feature rankings which can be used for model inference too. Unlike the orginal R package, which limits the user to a Random Forest model, BorutaShap allows the user to choose any Tree Based learner as the base model in the feature selection process.
 
@@ -29,7 +35,7 @@ If the algorithm has reached its set limit of runs and an importance has not bee
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install BorutaShap.
 
 ```bash
-pip install BorutaShap
+pip install BorutaShapPlus
 ```
 
 

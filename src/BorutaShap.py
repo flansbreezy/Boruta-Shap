@@ -1,12 +1,12 @@
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, IsolationForest
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from statsmodels.stats.multitest import multipletests
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, TimeSeriesSplit
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
 from sklearn.inspection import permutation_importance
 from scipy.sparse import issparse
-from scipy.stats import binom_test, ks_2samp
+from scipy.stats import binomtest, ks_2samp
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 import random
@@ -285,6 +285,19 @@ class BorutaShap:
         else:
             pass
 
+    def custom_train_test_split(self, X_df, y_df, weights_df, test_size, random_state, stratify, timeseries):
+
+        if timeseries:
+            # Split using sklearn time-aware split. Note: the min splits needed here is 2, with the 2nd split being the larger one, which we will use for or train-test split
+            tscv = TimeSeriesSplit(n_splits=2, test_size = int(np.floor(X_df.shape[0]*test_size)))
+            train_index, test_index = list(tscv.split(X_df))[1]
+            return X_df.iloc[train_index], X_df.iloc[test_index], y_df[train_index], y_df[test_index], weights_df[train_index], weights_df[test_index]
+        
+        else:
+            # If not a timeseries, use the original split code
+            return train_test_split(X_df, y_df, weights_df, test_size=test_size,random_state = random_state, stratify=stratify)                                                                              
+                                                                                                                                
+                                                                                                                                
 
     def Check_if_chose_train_or_test_and_train_model(self):
 
@@ -301,12 +314,13 @@ class BorutaShap:
 
         if self.train_or_test.lower() == 'test':
             # keeping the same naming convenetion as to not add complexit later on
-            self.X_boruta_train, self.X_boruta_test, self.y_train, self.y_test, self.w_train, self.w_test = train_test_split(self.X_boruta,
+            self.X_boruta_train, self.X_boruta_test, self.y_train, self.y_test, self.w_train, self.w_test = self.custom_train_test_split(self.X_boruta,
                                                                                                                                 self.y,
                                                                                                                                 self.sample_weight,
-                                                                                                                                test_size=0.3,
+                                                                                                                                test_size=self.test_size,
                                                                                                                                 random_state=self.random_state,
-                                                                                                                                stratify=self.stratify)
+                                                                                                                                stratify=self.stratify,
+                                                                                                                                timeseries = self.timeseries)
             self.Train_model(self.X_boruta_train, self.y_train, sample_weight = self.w_train)
 
         elif self.train_or_test.lower() == 'train':
@@ -356,7 +370,7 @@ class BorutaShap:
 
 
     def fit(self, X, y, sample_weight = None, n_trials = 20, random_state=0, sample=False,
-            train_or_test = 'test', normalize=True, verbose=True, stratify=None):
+            train_or_test = 'test', test_size = 0.3, normalize=True, verbose=True, stratify=None, ordered_timeseries = False):
 
         """
         The main body of the program this method it computes the following
@@ -397,7 +411,7 @@ class BorutaShap:
             A pandas series or numpy ndarray of the target
 
         sample_weight: Series/ndarray
-            A pandas series or numpy ndarray of the sample weight of the observations (optional)
+            A pandas series or numpy ndarray of the sample weight of the observations (optional). If timeseries, the weight needs to have the same index as the timeseries object. 
 
         random_state: int
             A random state for reproducibility of results
@@ -422,6 +436,9 @@ class BorutaShap:
         stratify: array
             allows the train test splits to be stratified based on given values.
 
+        ordered_timeseries: Boolean
+            indicates whether the data being input is an pre-ordered timeseries. 
+
         """
 
         if sample_weight is None:
@@ -437,12 +454,13 @@ class BorutaShap:
         self.all_columns = self.X.columns.to_numpy()
         self.rejected_columns = []
         self.accepted_columns = []
-
+        self.test_size = test_size
         self.check_X()
         self.check_missing_values()
         self.sample = sample
         self.train_or_test = train_or_test
         self.stratify = stratify
+        self.timeseries = ordered_timeseries
 
         self.features_to_remove = []
         self.hits  = np.zeros(self.ncols)
@@ -527,8 +545,8 @@ class BorutaShap:
 
         """
 
-        padded_history_shadow  = np.full((self.ncols), np.NaN)
-        padded_history_x = np.full((self.ncols), np.NaN)
+        padded_history_shadow  = np.full((self.ncols), np.nan)
+        padded_history_x = np.full((self.ncols), np.nan)
 
         for (index, col) in enumerate(self.columns):
             map_index = self.order[col]
@@ -822,7 +840,6 @@ class BorutaShap:
                                        feature_perturbation = "tree_path_dependent",
                                        approximate = True)
 
-
         if self.sample:
 
 
@@ -840,7 +857,7 @@ class BorutaShap:
 
                 elif len(self.shap_values.shape) == 3:
                     self.shap_values = np.abs(self.shap_values).sum(axis=0)
-                    self.shap_values = self.shap_values.mean(0)
+                    self.shap_values = self.shap_values.mean(1)
 
                 else:
                     self.shap_values = np.abs(self.shap_values).mean(0)
@@ -864,7 +881,7 @@ class BorutaShap:
 
                 elif len(self.shap_values.shape) == 3:
                     self.shap_values = np.abs(self.shap_values).sum(axis=0)
-                    self.shap_values = self.shap_values.mean(0)
+                    self.shap_values = self.shap_values.mean(1)
 
                 else:
                     self.shap_values = np.abs(self.shap_values).mean(0)
@@ -881,8 +898,10 @@ class BorutaShap:
         Perform a test that the probability of success is p.
         This is an exact, two-sided test of the null hypothesis
         that the probability of success in a Bernoulli experiment is p
+
+        Returns the p value of each of the tests.
         """
-        return [binom_test(x, n=n, p=p, alternative=alternative) for x in array]
+        return [binomtest(k=int(x), n=int(n), p=p, alternative=alternative).pvalue for x in array]
 
 
     @staticmethod
