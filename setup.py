@@ -25,7 +25,7 @@ setup(
     package_dir = {"" : "src"},
     install_requires=["scikit-learn","tqdm",
                       "statsmodels","matplotlib",
-                      "pandas","numpy<=2.0.0","shap>=0.34.0","seaborn",
+                      "pandas","numpy>=2.0.0","shap>=0.34.0","seaborn",
                       "scipy"],
     project_urls={
         "Original Repository": "https://github.com/Ekeany/Boruta-Shap",
